@@ -4,75 +4,72 @@ using namespace std;
 
 #define int long long
 
-const int maxn = (int)1e5 + 5;
+const int maxn = 1e5 + 5;
 
-struct node {
-  int suf_sum, pref_sum, tot_sum, max_sum;
+struct data_list {
+  int suf, pref, sum, seg;
 };
 
-node a[maxn], tree[4 * maxn];
+int a[maxn];
+data_list tree[4 * maxn];
 
-node combine(node x, node y) {
-  node cur;
-  cur.max_sum = max({x.max_sum, y.max_sum, x.suf_sum + y.pref_sum});
-  cur.pref_sum = max({x.tot_sum + y.pref_sum, x.pref_sum});
-  cur.suf_sum = max({y.tot_sum + x.suf_sum, y.suf_sum});
-  cur.tot_sum = x.tot_sum + y.tot_sum;
-  return cur;
+data_list make_data(int val) {
+  data_list res;
+  res.suf = val;
+  res.pref = val;
+  res.sum = val;
+  res.seg = val;
+  return res;
 }
 
-void build(int nodee, int start, int end) {
+data_list combine(data_list l, data_list r) {
+  data_list res;
+  res.pref = max(l.pref, l.sum + r.pref);
+  res.suf = max(r.suf, r.sum + l.suf);
+  res.sum = l.sum + r.sum;
+  res.seg = max({l.seg, r.seg, l.suf + r.pref});
+  return res;
+}
+
+void build(int node, int start, int end) {
   if (start == end) {
-    tree[nodee] = a[start];
+    tree[node] = make_data(a[start]);
     return;
   }
   int mid = (start + end)/2;
-  build(2 * nodee, start, mid);
-  build(2 * nodee + 1, mid + 1, end);
-  tree[nodee] = combine(tree[2 * nodee], tree[2 * nodee + 1]);
+  build(2 * node, start, mid);
+  build(2 * node + 1, mid + 1, end);
+  tree[node] = combine(tree[2 * node], tree[2 * node + 1]);
 }
 
-node query(int nodee, int start, int end, int l, int r) {
-  if (l <= start && end <= r) {
-    return tree[nodee];
-  }
+data_list query(int node, int start, int end, int l, int r) {
+  if (end < l || start > r) return make_data(-1e9);
+  if (l <= start && end <= r) return tree[node];
   int mid = (start + end)/2;
-  if (r <= mid) return query(2 * nodee, start, mid, l, r);
-  if (mid < l) return query(2 * nodee + 1, mid + 1, end, l, r);
-  return combine(query(2 * nodee, start, mid, l, r), query(2 * nodee + 1, mid + 1, end, l, r));
+  data_list q1 = query(2 * node, start, mid, l, r);
+  data_list q2 = query(2 * node + 1, mid + 1, end, l, r);
+  return combine(q1, q2);
 }
 
-void update(int nodee, int start, int end, int index, node value) {
+void update(int node, int start, int end, int ind, int val) {
   if (start == end) {
-    // a[start] = value;
-    tree[nodee] = value;
+    a[start] = val;
+    tree[node] = make_data(val);
     return;
   }
   int mid = (start + end)/2;
-  if (index <= mid) {
-    update(2 * nodee, start, mid, index, value);
-  }
-  else {
-    update(2 * nodee + 1, mid + 1, end, index, value);
-  }
-  tree[nodee] = combine(tree[2 * nodee], tree[2 * nodee + 1]);
+  if (ind <= mid) update(2 * node, start, mid, ind, val);
+  else update(2 * node + 1, mid + 1, end, ind, val);
+  tree[node] = combine(tree[2 * node], tree[2 * node + 1]);
 }
 
 int32_t main() {
   ios_base::sync_with_stdio(0), cin.tie(0);
 
-  int n;
+  int n, q;
   cin >> n;
-  for (int i = 0; i < n; ++i) {
-    int x;
-    cin >> x;
-    a[i].max_sum = x;
-    a[i].pref_sum = x;
-    a[i].suf_sum = x;
-    a[i].tot_sum = x;
-  }
+  for (int i = 0; i < n; ++i) cin >> a[i];
   build(1, 0, n - 1);
-  int q;
   cin >> q;
   while (q--) {
     int x;
@@ -80,20 +77,13 @@ int32_t main() {
     if (x == 0) {
       int ind, val;
       cin >> ind >> val;
-      node nod;
-      nod.max_sum = val;
-      nod.pref_sum = val;
-      nod.suf_sum = val;
-      nod.tot_sum = val;
-      update(1, 0, n - 1, ind - 1, nod);
-      a[ind - 1] = nod;
+      update(1, 0, n - 1, ind - 1, val);
     }
     else {
       int l, r;
       cin >> l >> r;
       --l; --r;
-      node ans_nod = query(1, 0, n - 1, l, r);
-      cout << ans_nod.max_sum << '\n';
+      cout << query(1, 0, n - 1, l, r).seg << '\n';
     }
   }
   return 0;
